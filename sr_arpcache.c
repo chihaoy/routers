@@ -15,11 +15,57 @@
   This function gets called every second. For each request sent out, we keep
   checking whether we should resend an request or destroy the arp request.
   See the comments in the header file for an idea of what it should look like.
+
+void sr_arpcache_sweepreqs(struct sr_instance *sr) {
+       for each request on sr->cache.requests:
+           handle_arpreq(request)
+   }
 */
+//wait maybe I need to iterate through the  queue not cache?
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
-}
+    struct sr_arpreq* req;
+    for (req = sr->cache.requests; req != NULL; req = req->next) {
+        fprintf(stderr, "Remaining ARP request in queue: ");
+        //print_addr_ip_int(req->ip);
 
+        handle_arpreq(sr, req);
+    }
+}
+/**
+   function handle_arpreq(req):
+       if difftime(now, req->sent) > 1.0
+           if req->times_sent >= 5:
+               send icmp host unreachable to source addr of all pkts waiting
+                 on this request
+               arpreq_destroy(req)
+           else:
+               send arp request
+               req->sent = now
+               req->times_sent++
+*/
+void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
+    time_t now = time(NULL);
+    if (difftime(now,req ->sent) > 1){
+        if (req ->times_sent >= 5){
+            //send icmp host unreachable to source addr of all pkts waiting on this request
+            struct sr_packet* packet1;
+            //under the queue corresponding to the entry whose IP address 
+            for (packet1 = req->packets; packet1 != NULL; packet1 = packet1->next) {
+                fprintf(stderr, "ifacename: %s\n", req->packets->iface);
+                //send_icmp_type3(HOST_UNREACHABLE_CODE, sr, req->packets->buf, req->packets->len, req->packets->in_iface);
+            }
+            sr_arpreq_destroy(&sr->cache, req);
+        }
+        else{
+            struct sr_if* interface = sr_get_interface(sr, req->packets->iface);
+            sr_send_packet(sr, req->packets ->buf, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
+            req->sent = now;
+            req->times_sent++;
+
+        }
+    }
+}
 /* You should not need to touch the rest of this code. */
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.

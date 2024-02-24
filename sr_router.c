@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "sr_if.h"
 #include "sr_rt.h"
 #include "sr_router.h"
@@ -88,7 +88,7 @@ void sr_handlepacket(struct sr_instance* sr,
   }
   else if (type == ethertype_ip) {
     fprintf(stderr, "It's an IP packet!\n");
-    //handle_ip_packet(sr, packet, len, in_iface_name);
+    
   }
   else {
     fprintf(stderr, "Invalid ethertype: %x\n", type);
@@ -112,7 +112,7 @@ void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len,
     handle_arp_reply(sr, packet,len, interface);
   }
 }
-
+//basically for transmitting the packets between routers or when the hosts talk to the router
 void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   //get the information from the old packet sent
   sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*) packet;
@@ -131,16 +131,71 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   b_arp_hdr->ar_pro = a_arp_hdr->ar_pro;
   b_arp_hdr->ar_hln = a_arp_hdr->ar_hln;
   b_arp_hdr->ar_pln = a_arp_hdr->ar_pln;
-  b_arp_hdr->ar_op = htons(arp_op_reply);  /* change to reply type */
+  b_arp_hdr->ar_op = htons(arp_op_reply); 
   b_arp_hdr->ar_sip = curr_interface->ip;
   b_arp_hdr->ar_tip = a_arp_hdr->ar_sip;
   memcpy(b_arp_hdr->ar_sha, curr_interface->addr, ETHER_ADDR_LEN);
   memcpy(b_arp_hdr->ar_tha, a_arp_hdr->ar_sha, ETHER_ADDR_LEN);
-  /* send the new packet back */
+  //send the packet back once it knows the mac address
   sr_send_packet(sr, arp_request, len, interface);
   
 
 }
+//send the macaddress of the destination back
 void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+  sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  struct sr_arpreq* req;
+  if (req != NULL) { // send reaming packet in the request queue corresponding to that
+      for (req = req->packets; req != NULL; req = req->next) {
+        sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(req);
+        //eth_copy_addr(eth_hdr->ether_shost, arp_hdr->dst_mac_addr);
+        //eth_copy_addr(eth_hdr->dst_mac_addr, arp_hdr->src_mac_addr);
+        struct sr_if* curr_interface= sr_get_interface(sr, interface);
+        memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);
+        memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);
+        sr_send_packet(sr, req, req->packets->len, req->packets->iface);
+        //fprintf(stderr, "Forwarding packet from interface %s:\n", pkt->out_iface);
+            //print_hdrs(pkt->buf, pkt->len);
+      }
+      sr_arpreq_destroy(&sr->cache, req);
+    }
+}
 
+void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+  //check if it is for the router or for the host
+  sr_ip_hdr_t* packer_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  int k = 0;//if it is for this router
+  for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
+      if (interface ->ip == packer_header ->ip_dst){
+          k = 1;
+      }
+  }
+  if (k == 1){
+    //send ICMP packet
+  }
+  else{//in this case we need to find the next hop and forward the packet
+  //check the routing table to see if the dst_id is in there
+    struct sr_if* curr_interface;
+    struct sr_rt* rtable_walker = sr->routing_table;
+    int is_in_rt_table = 0;
+    while(rtable_walker){
+        uint32_t dist =  packer_header->ip_dst;
+        if(dist == rtable_walker->dest.s_addr){
+          curr_interface = sr_get_interface(sr, rtable_walker->interface);
+          is_in_rt_table = 1;
+          break;
+        }
+      rtable_walker = rtable_walker->next;
+    }
+    //if it is forward the packet//do not use cache at all, thus always store in the queue when the new packet come
+    //and send the arp request to get the mac address
+    if (is_in_rt_table == 1){
+      struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, packer_header->ip_dst, packet, len, curr_interface->name);
+      handle_arpreq(sr,arp_request);
+    }
+    else{//otherwise, send ICMP packet back
+
+    }
+
+  }
 }

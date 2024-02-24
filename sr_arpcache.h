@@ -122,7 +122,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                          uint8_t *packet,               /* borrowed */
                          unsigned int packet_len,
                          char *iface);
-
+void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req);
 /* This method performs two functions:
    1) Looks up this IP in the request queue. If it is found, returns a pointer
       to the sr_arpreq with this IP. Otherwise, returns NULL.
