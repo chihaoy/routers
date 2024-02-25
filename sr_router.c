@@ -162,6 +162,8 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
 }
 
 void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+  //check for the TTL and send the ICMP Packet
+  //send Time exceeded (type 11, code 0) ICMP Packet
   //check if it is for the router or for the host
   sr_ip_hdr_t* packer_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
   int k = 0;//if it is for this router
@@ -170,8 +172,14 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
           k = 1;
       }
   }
+  //when it is destined for me
   if (k == 1){
     //send ICMP packet
+    //handle icmp packets
+    //if get the echo request then send the echo reply
+        //else just say receives the echo reply
+        //question host automatically constructs the echo request? Does Router construct the echo request? Do I need to send the echo request 
+        //from the router myself?  
   }
   else{//in this case we need to find the next hop and forward the packet
   //check the routing table to see if the dst_id is in there
@@ -194,8 +202,9 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
       handle_arpreq(sr,arp_request);
     }
     else{//otherwise, send ICMP packet back
-
+    //ICMP PACKET Destination net unreachable (type 3, code 0)
     }
 
   }
+  
 }

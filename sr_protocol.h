@@ -76,7 +76,7 @@
 #endif
 #define ICMP_DATA_SIZE 28
 
-/* Structure of a type11 ICMP header
+/* Structure of a type11 ICMP header  //maybe type also for 3?
  */
 struct sr_icmp_t11_hdr {
   uint8_t icmp_type;

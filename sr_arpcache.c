@@ -44,6 +44,8 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
                req->sent = now
                req->times_sent++
 */
+//I assume this req contains IP address of the destination host and 
+//under that it has several packets(linked list of packets) that has this IP destination address
 void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
     time_t now = time(NULL);
     if (difftime(now,req ->sent) > 1){
@@ -53,13 +55,34 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             //under the queue corresponding to the entry whose IP address 
             for (packet1 = req->packets; packet1 != NULL; packet1 = packet1->next) {
                 fprintf(stderr, "ifacename: %s\n", req->packets->iface);
-                //send_icmp_type3(HOST_UNREACHABLE_CODE, sr, req->packets->buf, req->packets->len, req->packets->in_iface);
+                //construct ICMP packet(type 3, code 1)
+                //Needs to be done!!!!
             }
-            sr_arpreq_destroy(&sr->cache, req);
+            sr_arpreq_destroy(&sr->cache, req);//destroy it whhen it has already send 5 times
         }
         else{
+            uint8_t* arp_request = (uint8_t*) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+            sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) arp_request;
+            sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
             struct sr_if* interface = sr_get_interface(sr, req->packets->iface);
-            sr_send_packet(sr, req->packets ->buf, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
+            /* fill the ethernet header */
+            eth_hdr->ether_type = htons(ethertype_arp);
+            memcpy(eth_hdr->ether_dhost, (uint8_t*)"\xff\xff\xff\xff\xff\xff", ETHER_ADDR_LEN);
+            memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
+      
+            /* fill the arp header */
+            arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
+            arp_hdr->ar_pro = htons(ethertype_ip);
+            arp_hdr->ar_hln = ETHER_ADDR_LEN;
+            arp_hdr->ar_pln = 4;
+            arp_hdr->ar_op = htons(arp_op_request);
+            arp_hdr->ar_sip = interface->ip;
+            arp_hdr->ar_tip = req->ip;
+            memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
+            memcpy(arp_hdr->ar_tha, (uint8_t*)"\xff\xff\xff\xff\xff\xff", ETHER_ADDR_LEN);
+      
+      /* send out arp request */
+            sr_send_packet(sr, arp_request, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
             req->sent = now;
             req->times_sent++;
 
