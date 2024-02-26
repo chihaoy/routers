@@ -61,6 +61,7 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             sr_arpreq_destroy(&sr->cache, req);//destroy it whhen it has already send 5 times
         }
         else{
+            printf("reach here!\n");
             uint8_t* arp_request = (uint8_t*) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
             sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) arp_request;
             sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
@@ -82,7 +83,9 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             memcpy(arp_hdr->ar_tha, (uint8_t*)"\xff\xff\xff\xff\xff\xff", ETHER_ADDR_LEN);
       
       /* send out arp request */
+            printf("reach hereNNNNNNNN!\n");
             sr_send_packet(sr, arp_request, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
+            printf("reach hereNNNNNNNN!\n");
             req->sent = now;
             req->times_sent++;
 

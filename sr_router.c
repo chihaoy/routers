@@ -88,7 +88,7 @@ void sr_handlepacket(struct sr_instance* sr,
   }
   else if (type == ethertype_ip) {
     fprintf(stderr, "It's an IP packet!\n");
-    
+    handle_ip_packet(sr, packet, len, interface);
   }
   else {
     fprintf(stderr, "Invalid ethertype: %x\n", type);
@@ -106,9 +106,11 @@ void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len,
   // sr_if* receive_interface= sr_get_interface(sr, interface);
   uint16_t choice = ntohs(arp_hdr->ar_op);
   if (choice == arp_op_request){
+    printf("arp_request\n");
     handle_arp_request(sr, packet,len, interface);
   }
   else{
+    printf("arp_reply\n");
     handle_arp_reply(sr, packet,len, interface);
   }
 }
@@ -137,23 +139,28 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   memcpy(b_arp_hdr->ar_sha, curr_interface->addr, ETHER_ADDR_LEN);
   memcpy(b_arp_hdr->ar_tha, a_arp_hdr->ar_sha, ETHER_ADDR_LEN);
   //send the packet back once it knows the mac address
-  sr_send_packet(sr, arp_request, len, interface);
-  
+  printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
+  sr_send_packet(sr, arp_request, len, curr_interface -> name);
+  printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
 
 }
 //send the macaddress of the destination back
 void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-  struct sr_arpreq* req;
+  struct sr_arpreq* req = sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, 
+                                                   arp_hdr->ar_sip);
+  struct sr_packet* temp;
   if (req != NULL) { // send reaming packet in the request queue corresponding to that
-      for (req = req->packets; req != NULL; req = req->next) {
+      for (temp = req->packets; temp != NULL; temp = temp->next) {
         sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(req);
         //eth_copy_addr(eth_hdr->ether_shost, arp_hdr->dst_mac_addr);
         //eth_copy_addr(eth_hdr->dst_mac_addr, arp_hdr->src_mac_addr);
         struct sr_if* curr_interface= sr_get_interface(sr, interface);
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);
-        sr_send_packet(sr, req, req->packets->len, req->packets->iface);
+        printf("what!!!!!!!!!!!!!!!!!!!!");
+        sr_send_packet(sr, temp->buf, req->packets->len, req->packets->iface);
+        printf("what!!!!!!!!!!!!!!!!!!!!");
         //fprintf(stderr, "Forwarding packet from interface %s:\n", pkt->out_iface);
             //print_hdrs(pkt->buf, pkt->len);
       }
@@ -163,8 +170,10 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
 
 void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   //check for the TTL and send the ICMP Packet
+  
   //send Time exceeded (type 11, code 0) ICMP Packet
   //check if it is for the router or for the host
+  print_hdrs(packet, len);
   sr_ip_hdr_t* packer_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
   int k = 0;//if it is for this router
   for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
@@ -198,6 +207,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //if it is forward the packet//do not use cache at all, thus always store in the queue when the new packet come
     //and send the arp request to get the mac address
     if (is_in_rt_table == 1){
+      printf("it is for me ready to put it in the queue");
       struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, packer_header->ip_dst, packet, len, curr_interface->name);
       handle_arpreq(sr,arp_request);
     }
