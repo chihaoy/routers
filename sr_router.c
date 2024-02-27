@@ -222,6 +222,13 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   }
   else{//in this case we need to find the next hop and forward the packet
   //check the routing table to see if the dst_id is in there
+    packet_header->ip_ttl = packet_header->ip_ttl - 1;
+    printf("ttl%u:\n",packet_header->ip_ttl);
+    if (packet_header->ip_ttl == 0){
+      printf(" Time out!! TTL is 0 now, send ICMP time exceeded\n");
+      send_ICMP3_TYPE0(sr, packet, len,interface,11, 0);
+      return;
+    }
     struct sr_if* curr_interface;
     struct sr_rt* match = sr->routing_table;
     int is_in_rt_table = 0;
@@ -243,7 +250,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     else{//otherwise, send ICMP packet back
     //ICMP PACKET Destination net unreachable (type 3, code 0):can not find it in the routing table
-      send_ICMP3_TYPE0(sr, packet,len, interface);
+      send_ICMP3_TYPE0(sr, packet,len, interface,3,0);
     }
 
   }
@@ -251,7 +258,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
 //still need revision
 void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
     printf("echo reply1:\n");
-    print_hdrs(packet,len);
+    //print_hdrs(packet,len);
     sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) packet;
     sr_ip_hdr_t* ip_hdr = (sr_ip_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
     sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
@@ -295,11 +302,11 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     
     
     printf("echo reply:\n");
-    print_hdrs(packet,len);
+    //print_hdrs(packet,len);
     sr_send_packet(sr, packet, len, curr_interface->name);
 }
 
-void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface,uint8_t type,uint8_t code){
 
   uint8_t* new_packet = malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t));
@@ -332,16 +339,16 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   printf("fewd2%d\n",htons(sizeof(sr_ip_hdr_t)));
   b_ip_hdr->ip_id = a_ip_hdr->ip_id;
   b_ip_hdr->ip_off = a_ip_hdr->ip_off;
-  b_ip_hdr->ip_ttl = 255;
+  b_ip_hdr->ip_ttl = a_ip_hdr -> ip_ttl;
   b_ip_hdr->ip_p = a_ip_hdr->ip_p;
   b_ip_hdr->ip_src = sr_get_interface(sr, interface)->ip;
   b_ip_hdr->ip_dst = a_ip_hdr->ip_src;
   b_ip_hdr->ip_sum = 0;
   b_ip_hdr->ip_sum = cksum(b_ip_hdr, sizeof(sr_ip_hdr_t));
   //checksum problem
-  uint8_t temp = 3;
-  icmp_hdr->icmp_type = temp;
-  icmp_hdr->icmp_code = 0x00;
+  //uint8_t temp = 3;
+  icmp_hdr->icmp_type = type;
+  icmp_hdr->icmp_code = code;
   memcpy(icmp_hdr->data, a_ip_hdr, ICMP_DATA_SIZE);
   icmp_hdr->icmp_sum = 0;
   icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
