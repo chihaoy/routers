@@ -81,8 +81,10 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
       
             printf("reach hereNNNNNNNN!\n");
             sr_send_packet(sr, arp_request, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
+            printf("req->sent%ld\n",req->sent);
             printf("reach hereNNNNNNNN!\n");
             req->sent = now;
+            printf("req->times_sent%d\n",req->times_sent);
             req->times_sent++;
 
         }

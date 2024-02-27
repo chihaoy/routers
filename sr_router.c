@@ -180,8 +180,16 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
           k = 1;
       }
   }
-  //when it is destined for me
+  //when it is destined for me//then send the echo reply
   if (k == 1){
+    //if it is echo request, then send the echo reply
+    printf("This is for me!!\n");
+    sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    printf("icmp_hdr type: %u\n", icmp_hdr ->icmp_type);
+    if (icmp_hdr ->icmp_type == 0x08){
+      
+      send_echo_reply(sr,packet,len,interface);
+    }
     //send ICMP packet
     //handle icmp packets
     //if get the echo request then send the echo reply
@@ -192,16 +200,16 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   else{//in this case we need to find the next hop and forward the packet
   //check the routing table to see if the dst_id is in there
     struct sr_if* curr_interface;
-    struct sr_rt* rtable_walker = sr->routing_table;
+    struct sr_rt* match = sr->routing_table;
     int is_in_rt_table = 0;
-    while(rtable_walker){
+    while(match){
         uint32_t dist =  packet_header->ip_dst;
-        if(dist == rtable_walker->dest.s_addr){
-          curr_interface = sr_get_interface(sr, rtable_walker->interface);
+        if(dist == match->dest.s_addr){
+          curr_interface = sr_get_interface(sr, match->interface);
           is_in_rt_table = 1;
           break;
         }
-      rtable_walker = rtable_walker->next;
+      match = match->next;
     }
     //if it is forward the packet//do not use cache at all, thus always store in the queue when the new packet come
     //and send the arp request to get the mac address
@@ -211,9 +219,45 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
       handle_arpreq(sr,arp_request);
     }
     else{//otherwise, send ICMP packet back
-    //ICMP PACKET Destination net unreachable (type 3, code 0)
+    //ICMP PACKET Destination net unreachable (type 3, code 0):can not find it in the routing table
+      send_ICMP3_TYPE0(sr, packet,len, interface);
     }
 
   }
+}
+//still need revision
+void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+    printf("echo reply1:\n");
+    print_hdrs(packet,len);
+    sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) packet;
+    sr_ip_hdr_t* ip_hdr = (sr_ip_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
+    sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    sr_print_routing_table(sr);
+    //in thr routing table, find the eth that I should send from
+    struct sr_if* curr_interface;
+    struct sr_rt* match = sr->routing_table;
+    while(match){
+        uint32_t dist =  ip_hdr->ip_src;
+        if(dist == match->dest.s_addr){
+          printf("AAAAA\n");
+          curr_interface = sr_get_interface(sr, match->interface);
+          break;
+        }
+      match = match->next;
+    }
+    memcpy(eth_hdr->ether_dhost, eth_hdr ->ether_shost, ETHER_ADDR_LEN);//destination host to be the mac address
+    memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
+    uint32_t temp = ip_hdr ->ip_dst;
+    ip_hdr -> ip_dst = ip_hdr -> ip_src;
+    ip_hdr -> ip_src = temp;
+    icmp_hdr -> icmp_type = 0x00;
+    
+    printf("echo reply:\n");
+    print_hdrs(packet,len);
+    sr_send_packet(sr, packet, len, curr_interface->name);
+}
+
+void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   
 }
+
