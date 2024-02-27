@@ -258,6 +258,55 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
 }
 
 void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
-  
+
+  uint8_t* new_packet = malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+                   + sizeof(sr_icmp_t11_hdr_t));
+   sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*)packet;
+   sr_ip_hdr_t* a_ip_hdr = (sr_ip_hdr_t*)(packet+ sizeof(sr_ethernet_hdr_t));
+  sr_ethernet_hdr_t* b_e_hdr = (sr_ethernet_hdr_t*)new_packet;
+  sr_ip_hdr_t* b_ip_hdr = (sr_ip_hdr_t*)(new_packet+ sizeof(sr_ethernet_hdr_t));
+  sr_icmp_t11_hdr_t* icmp_hdr = (sr_icmp_t11_hdr_t*)(new_packet+ sizeof(sr_ethernet_hdr_t)
+                                                   + sizeof(sr_ip_hdr_t));
+  struct sr_if* new_interface;
+
+  struct sr_rt* match = sr->routing_table;
+  while(match)
+  {
+    uint32_t dist = a_ip_hdr->ip_src;
+    if(dist == match->dest.s_addr)
+    {
+      new_interface = sr_get_interface(sr, match->interface);
+    }
+    match = match->next;
+   }
+
+  /* fill in ethernet header, change sr/dest addr, remain arp type */
+  b_e_hdr->ether_type = a_eth_hdr->ether_type;  /* ip type */ 
+  memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
+  memcpy(b_e_hdr->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
+  b_ip_hdr->ip_hl = a_ip_hdr->ip_hl;
+  b_ip_hdr->ip_v = a_ip_hdr->ip_v;
+  b_ip_hdr->ip_tos = a_ip_hdr->ip_tos;
+  b_ip_hdr->ip_len = htons(len - sizeof(sr_ethernet_hdr_t));
+  printf("fewd2%d\n",htons(sizeof(sr_ip_hdr_t)));
+  b_ip_hdr->ip_id = a_ip_hdr->ip_id;
+  b_ip_hdr->ip_off = a_ip_hdr->ip_off;
+  b_ip_hdr->ip_ttl = 255;
+  b_ip_hdr->ip_p = a_ip_hdr->ip_p;
+  b_ip_hdr->ip_src = sr_get_interface(sr, interface)->ip;
+  b_ip_hdr->ip_dst = a_ip_hdr->ip_src;
+  b_ip_hdr->ip_sum = 0;
+  b_ip_hdr->ip_sum = cksum(b_ip_hdr, sizeof(sr_ip_hdr_t));
+  //checksum problem
+  icmp_hdr->icmp_type = 3;
+  icmp_hdr->icmp_code = 0;
+  memcpy(icmp_hdr->data, a_ip_hdr, ICMP_DATA_SIZE);
+  icmp_hdr->icmp_sum = 0;
+  icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
+  icmp_hdr -> unused = 0;
+
+  /* send the new packet back */
+  sr_send_packet(sr, new_packet, len, new_interface->name);
+
 }
 
