@@ -131,10 +131,12 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   b_arp_hdr->ar_hln = a_arp_hdr->ar_hln;
   b_arp_hdr->ar_pln = a_arp_hdr->ar_pln;
   b_arp_hdr->ar_op = htons(arp_op_reply); //change it to reply type
-  b_arp_hdr->ar_sip = curr_interface->ip; //current interface IP of the router
-  b_arp_hdr->ar_tip = a_arp_hdr->ar_sip;//change to the IP address of the source 
   memcpy(b_arp_hdr->ar_sha, curr_interface->addr, ETHER_ADDR_LEN); //memcpy since it is an arry
+  b_arp_hdr->ar_sip = curr_interface->ip; //current interface IP of the router
+  
   memcpy(b_arp_hdr->ar_tha, a_arp_hdr->ar_sha, ETHER_ADDR_LEN);
+  b_arp_hdr->ar_tip = a_arp_hdr->ar_sip;//change to the IP address of the source 
+  
   //send the packet back once it knows the mac address
   printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
   sr_send_packet(sr, arp_request, len, curr_interface -> name);
@@ -153,9 +155,14 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
       for (temp = req->packets; temp != NULL; temp = temp->next) {
         printf("This is wrong");
         sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(temp -> buf);
+        sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t*)(temp -> buf+sizeof(sr_ethernet_hdr_t));
         struct sr_if* curr_interface= sr_get_interface(sr, interface);
+
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);//destination host to be the mac address
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
+        new_ip_hdr->ip_sum = 0;
+        new_ip_hdr->ip_sum = cksum(new_ip_hdr, sizeof(sr_ip_hdr_t));
+
         printf("what!!!!!!!!!!!!!!!!!!!!");
         sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);
         printf("what!!!!!!!!!!!!!!!!!!!!");
@@ -174,6 +181,18 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   //check if it is for the router or for the host
   print_hdrs(packet, len);
   sr_ip_hdr_t* packet_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  uint16_t temp_ip_sum = packet_header->ip_sum;
+  packet_header->ip_sum = 0;
+  if(temp_ip_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
+  {  
+    packet_header->ip_sum = temp_ip_sum;
+    printf(" ip packet check sum is not correct\n");
+    return;
+  }
+  else{
+    packet_header->ip_sum = temp_ip_sum;
+  }
+    
   int k = 0;//if it is for this router
   for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
       if (interface ->ip == packet_header ->ip_dst){
@@ -246,11 +265,13 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
       match = match->next;
     }
     memcpy(eth_hdr->ether_dhost, eth_hdr ->ether_shost, ETHER_ADDR_LEN);//destination host to be the mac address
-    memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
+    memcpy(eth_hdr->ether_shost, sr_get_interface(sr, match->interface)->addr, ETHER_ADDR_LEN);//source host to be the interface address
     uint32_t temp = ip_hdr ->ip_dst;
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
     icmp_hdr -> icmp_type = 0x00;
+    icmp_hdr->icmp_sum = 0;
+    icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t08_hdr_t));
     
     printf("echo reply:\n");
     print_hdrs(packet,len);
@@ -279,8 +300,6 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     match = match->next;
    }
-
-  /* fill in ethernet header, change sr/dest addr, remain arp type */
   b_e_hdr->ether_type = a_eth_hdr->ether_type;  /* ip type */ 
   memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
   memcpy(b_e_hdr->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
@@ -303,9 +322,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   memcpy(icmp_hdr->data, a_ip_hdr, ICMP_DATA_SIZE);
   icmp_hdr->icmp_sum = 0;
   icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
-  icmp_hdr -> unused = 0;
-
-  /* send the new packet back */
+  //icmp_hdr -> unused = 0;
   sr_send_packet(sr, new_packet, len, new_interface->name);
 
 }
