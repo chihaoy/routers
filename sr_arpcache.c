@@ -56,6 +56,9 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             for (packet1 = req->packets; packet1 != NULL; packet1 = packet1->next) {
                 fprintf(stderr, "ifacename: %s\n", req->packets->iface);
                 //construct ICMP packet(type 3, code 1)
+                struct sr_if* cur_interface = sr_get_interface(sr, req->packets->iface);
+                send_ICMP3_TYPE0(sr, packet1 -> buf,0, cur_interface -> name,3,0);
+                printf("send ICMP host unreachable back\n");
                 //Needs to be done!!!!
             }
             sr_arpreq_destroy(&sr->cache, req);//destroy it whhen it has already send 5 times

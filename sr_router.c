@@ -209,6 +209,9 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     printf("This is for me!!\n");
     sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     printf("icmp_hdr type: %u\n", icmp_hdr ->icmp_type);
+    if (packet_header -> ip_p != ip_protocol_icmp){
+      return;
+    }
     if (icmp_hdr ->icmp_type == 0x08){
       
       send_echo_reply(sr,packet,len,interface);
@@ -250,7 +253,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     else{//otherwise, send ICMP packet back
     //ICMP PACKET Destination net unreachable (type 3, code 0):can not find it in the routing table
-      send_ICMP3_TYPE0(sr, packet,len, interface,3,0);
+      send_ICMP3_TYPE0(sr, packet,0, interface,3,0);
     }
 
   }
@@ -294,7 +297,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     uint32_t temp = ip_hdr ->ip_dst;
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
-    
+    //ip_hdr -> ip_ttl = 64;
     icmp_hdr -> icmp_type = 0x00;
     icmp_hdr -> icmp_code = 0x00;
     icmp_hdr->icmp_sum = 0x0000;
