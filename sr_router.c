@@ -94,7 +94,6 @@ void sr_handlepacket(struct sr_instance* sr,
 //router and 
 void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   //interface of the router that the packet is sent to
-  //sr_ethernet_hdr_t* e_hdr = (sr_ethernet_hdr_t *)packet;
   sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
   
   // sr_if* receive_interface= sr_get_interface(sr, interface);
@@ -119,7 +118,6 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   sr_arp_hdr_t* b_arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
   //assign the correct value for each field in the header
   struct sr_if* curr_interface= sr_get_interface(sr, interface);
-  fprintf(stderr, "\ttype: %d\n", ntohs(a_eth_hdr->ether_type));
   b_eth_hdr ->ether_type = a_eth_hdr ->ether_type;
   memcpy(b_eth_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
   memcpy(b_eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);
@@ -140,6 +138,15 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
 
 }
+/* the hint from sr_arpcache.c
+# When servicing an arp reply that gives us an IP->MAC mapping
+   req = arpcache_insert(ip, mac)
+
+   if req:
+       send all packets on the req->packets linked list
+       arpreq_destroy(req)
+
+   --*/
 //send the macaddress of the destination back
 void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
@@ -154,10 +161,20 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(temp -> buf);
         sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t*)(temp -> buf+sizeof(sr_ethernet_hdr_t));
         struct sr_if* curr_interface= sr_get_interface(sr, interface);
-
+        
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);//destination host to be the mac address
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
-        new_ip_hdr->ip_sum = 0;
+        eth_hdr->ether_type = eth_hdr->ether_type;
+        new_ip_hdr->ip_tos = new_ip_hdr->ip_tos;
+        new_ip_hdr->ip_len = new_ip_hdr->ip_len;
+        new_ip_hdr->ip_id = new_ip_hdr->ip_id;
+        new_ip_hdr->ip_off = new_ip_hdr->ip_off;
+        new_ip_hdr->ip_ttl = new_ip_hdr->ip_ttl;
+        new_ip_hdr->ip_p = new_ip_hdr->ip_p;
+        new_ip_hdr -> ip_src = new_ip_hdr -> ip_src;
+        new_ip_hdr -> ip_dst = new_ip_hdr -> ip_dst;
+       
+        new_ip_hdr->ip_sum = 0x0000;
         new_ip_hdr->ip_sum = cksum(new_ip_hdr, sizeof(sr_ip_hdr_t));
 
         printf("what!!!!!!!!!!!!!!!!!!!!");
@@ -327,7 +344,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     match = match->next;
    }
-  b_e_hdr->ether_type = a_eth_hdr->ether_type;  /* ip type */ 
+  b_e_hdr->ether_type = a_eth_hdr->ether_type;  
   memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
   memcpy(b_e_hdr->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
   b_ip_hdr->ip_hl = a_ip_hdr->ip_hl;
@@ -348,7 +365,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   icmp_hdr->icmp_type = type;
   icmp_hdr->icmp_code = code;
   memcpy(icmp_hdr->data, a_ip_hdr, ICMP_DATA_SIZE);
-  icmp_hdr->icmp_sum = 0;
+  icmp_hdr->icmp_sum = 0x00;
   icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
   //icmp_hdr -> unused = 0;
   printf("what I wanr\n");
