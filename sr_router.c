@@ -164,7 +164,6 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);
         printf("what!!!!!!!!!!!!!!!!!!!!");
         
-        //fprintf(stderr, "Forwarding packet from interface %s:\n", pkt->out_iface);
             //print_hdrs(pkt->buf, pkt->len);
       }
       sr_arpreq_destroy(&sr->cache, req);//after it sends it, destroy it
