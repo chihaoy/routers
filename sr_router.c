@@ -82,12 +82,9 @@ void sr_handlepacket(struct sr_instance* sr,
   //sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)packet;
   uint16_t type = ethertype(packet);
   if (type == ethertype_arp) {
-    fprintf(stderr, "It's an ARP packet!\n");
-    //handle_arp_packet(sr, packet, len, in_iface_name);
     handle_arp_packet(sr, packet, len, interface);
   }
   else if (type == ethertype_ip) {
-    fprintf(stderr, "It's an IP packet!\n");
     handle_ip_packet(sr, packet, len, interface);
   }
 
@@ -228,7 +225,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     packet_header->ip_ttl = packet_header->ip_ttl - 1;
     printf("ttl%u:\n",packet_header->ip_ttl);
     if (packet_header->ip_ttl == 0){
-      printf(" Time out!! TTL is 0 now, send ICMP time exceeded\n");
+      printf(" Time out!!\n");
       send_ICMP3_TYPE0(sr, packet, len,interface,11, 0);
       return;
     }
@@ -269,10 +266,9 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
   ip_hdr->ip_sum = 0x0000;
   printf("%hu\n", temp_ip_sum);
   printf("%hu\n", cksum(ip_hdr, sizeof(sr_ip_hdr_t)));
-    if(temp_ip_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t)))
-  {  
+  if(temp_ip_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t))){  
     ip_hdr->ip_sum = temp_ip_sum;
-    printf(" ip packet check sum is not correct\n");
+    printf(" wrong\n");
     return;
   }
   else{
