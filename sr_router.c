@@ -355,7 +355,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   b_ip_hdr->ip_id = a_ip_hdr->ip_id;
   b_ip_hdr->ip_off = a_ip_hdr->ip_off;
   b_ip_hdr->ip_ttl = a_ip_hdr -> ip_ttl;
-  b_ip_hdr->ip_p = a_ip_hdr->ip_p;
+  b_ip_hdr->ip_p = ip_protocol_icmp;
   b_ip_hdr->ip_src = sr_get_interface(sr, interface)->ip;
   b_ip_hdr->ip_dst = a_ip_hdr->ip_src;
   b_ip_hdr->ip_sum = 0;
