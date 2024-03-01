@@ -26,7 +26,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
     /* Fill this in */
     struct sr_arpreq* req;
     for (req = sr->cache.requests; req != NULL; req = req->next) {
-        fprintf(stderr, "Remaining ARP request in queue: ");
+       
         //print_addr_ip_int(req->ip);
 
         handle_arpreq(sr, req);
@@ -77,10 +77,12 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             arp_hdr->ar_hln = ETHER_ADDR_LEN;
             arp_hdr->ar_pln = 4;
             arp_hdr->ar_op = htons(arp_op_request);//since it is sending arp request, thus type is arp request
-            arp_hdr->ar_sip = interface->ip;
-            arp_hdr->ar_tip = req->ip;
             memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
-            memcpy(arp_hdr->ar_tha, (uint8_t*)"\x00\x00\x00\x00\x00\x00", ETHER_ADDR_LEN);
+            arp_hdr->ar_sip = interface->ip;
+             memcpy(arp_hdr->ar_tha, (uint8_t*)"\x00\x00\x00\x00\x00\x00", ETHER_ADDR_LEN);
+            arp_hdr->ar_tip = req->ip;
+            
+           
       
             printf("reach hereNNNNNNNN!\n");
             sr_send_packet(sr, arp_request, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), interface->name);
