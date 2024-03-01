@@ -161,10 +161,10 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(temp -> buf);
         sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t*)(temp -> buf+sizeof(sr_ethernet_hdr_t));
         struct sr_if* curr_interface= sr_get_interface(sr, interface);
-        
+        eth_hdr->ether_type = eth_hdr->ether_type;
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);//destination host to be the mac address
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
-        eth_hdr->ether_type = eth_hdr->ether_type;
+        
         new_ip_hdr->ip_tos = new_ip_hdr->ip_tos;
         new_ip_hdr->ip_len = new_ip_hdr->ip_len;
         new_ip_hdr->ip_id = new_ip_hdr->ip_id;
@@ -332,7 +332,10 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   sr_ip_hdr_t* b_ip_hdr = (sr_ip_hdr_t*)(new_packet+ sizeof(sr_ethernet_hdr_t));
   sr_icmp_t11_hdr_t* icmp_hdr = (sr_icmp_t11_hdr_t*)(new_packet+ sizeof(sr_ethernet_hdr_t)
                                                    + sizeof(sr_ip_hdr_t));
-  struct sr_if* new_interface;
+ 
+  b_e_hdr->ether_type = a_eth_hdr->ether_type;  
+  memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
+   struct sr_if* new_interface;
 
   struct sr_rt* match = sr->routing_table;
   while(match)
@@ -344,8 +347,6 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     match = match->next;
    }
-  b_e_hdr->ether_type = a_eth_hdr->ether_type;  
-  memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
   memcpy(b_e_hdr->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
   b_ip_hdr->ip_hl = a_ip_hdr->ip_hl;
   b_ip_hdr->ip_v = a_ip_hdr->ip_v;
