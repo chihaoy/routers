@@ -301,7 +301,6 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     uint32_t temp = ip_hdr ->ip_dst;
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
-    ip_hdr -> ip_ttl = INIT_TTL;
     icmp_hdr -> icmp_type = 0x00;
     icmp_hdr -> icmp_code = 0x00;
     icmp_hdr->icmp_sum = 0x0000;
@@ -312,6 +311,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     //print_hdrs(packet,len);
     sr_send_packet(sr, packet, len, curr_interface->name);
 }
+
 
 void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface,uint8_t type,uint8_t code){
 
