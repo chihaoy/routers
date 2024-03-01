@@ -82,7 +82,17 @@ void sr_handlepacket(struct sr_instance* sr,
   //sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)packet;
   uint16_t type = ethertype(packet);
   if (type == ethertype_arp) {
-    handle_arp_packet(sr, packet, len, interface);
+    sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  
+  // sr_if* receive_interface= sr_get_interface(sr, interface);
+    if (ntohs(arp_hdr->ar_op) == arp_op_request){
+      printf("arp_request\n");
+      handle_arp_request(sr, packet,len, interface);
+    }
+    else{
+     printf("arp_reply\n");
+      handle_arp_reply(sr, packet,len, interface);
+    }
   }
   else if (type == ethertype_ip) {
     handle_ip_packet(sr, packet, len, interface);
@@ -90,29 +100,11 @@ void sr_handlepacket(struct sr_instance* sr,
 
 }/* end sr_ForwardPacket */
 
-//handle arp request is basically for getting the router interface so that packet can send from the host to
-//router and 
-void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
-  //interface of the router that the packet is sent to
-  sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-  
-  // sr_if* receive_interface= sr_get_interface(sr, interface);
-  uint16_t choice = ntohs(arp_hdr->ar_op);
-  if (choice == arp_op_request){
-    printf("arp_request\n");
-    handle_arp_request(sr, packet,len, interface);
-  }
-  else{
-    printf("arp_reply\n");
-    handle_arp_reply(sr, packet,len, interface);
-  }
-}
+
 //basically for transmitting the packets between routers or when the hosts talk to the router
 void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
-  //get the information from the old packet sent
   sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*) packet;
   sr_arp_hdr_t* a_arp_hdr = (sr_arp_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
-  //create new arp request packet
   uint8_t* arp_request = (uint8_t*) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
   sr_ethernet_hdr_t* b_eth_hdr = (sr_ethernet_hdr_t*) arp_request;
   sr_arp_hdr_t* b_arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
@@ -201,7 +193,6 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   printf("%hu\n", cksum(packet_header, sizeof(sr_ip_hdr_t)));
   if(temp_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
   {  
-    
     printf(" ip packet check sum is not correct\n");
     return;
   }
@@ -310,7 +301,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     uint32_t temp = ip_hdr ->ip_dst;
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
-    //ip_hdr -> ip_ttl = 64;
+    ip_hdr -> ip_ttl = INIT_TTL;
     icmp_hdr -> icmp_type = 0x00;
     icmp_hdr -> icmp_code = 0x00;
     icmp_hdr->icmp_sum = 0x0000;
@@ -367,7 +358,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   icmp_hdr->icmp_type = type;
   icmp_hdr->icmp_code = code;
   memcpy(icmp_hdr->data, a_ip_hdr, ICMP_DATA_SIZE);
-  icmp_hdr->icmp_sum = 0x00;
+  icmp_hdr->icmp_sum = 0x0000;
   icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
   //icmp_hdr -> unused = 0;
   printf("what I wanr\n");

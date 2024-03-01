@@ -53,6 +53,7 @@ struct sr_instance
     struct sr_rt* routing_table; /* routing table */
     struct sr_arpcache cache;   /* ARP cache */
     pthread_attr_t attr;
+    int count;
     FILE* logfile;
 };
 
@@ -67,7 +68,6 @@ int sr_read_from_server(struct sr_instance* );
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
-void handle_arp_packet(struct sr_instance*, uint8_t*,unsigned int, char* );
 void handle_arp_request(struct sr_instance*, uint8_t*,unsigned int, char*);
 void handle_arp_reply(struct sr_instance*, uint8_t*,unsigned int, char*);
 void handle_ip_packet(struct sr_instance*, uint8_t*,unsigned int , char*);
