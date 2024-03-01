@@ -194,20 +194,20 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   //check if it is for the router or for the host
   print_hdrs(packet, len);
   sr_ip_hdr_t* packet_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-  uint16_t temp_ip_sum = packet_header->ip_sum;
+  uint16_t temp_sum = packet_header->ip_sum;
   packet_header->ip_sum = 0x0000;
   printf("wantfeqf  2ed 2dasda\n");
-  printf("%hu\n", temp_ip_sum);
+  printf("%hu\n", temp_sum);
   printf("%hu\n", cksum(packet_header, sizeof(sr_ip_hdr_t)));
-  if(temp_ip_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
+  if(temp_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
   {  
-    packet_header->ip_sum = temp_ip_sum;
+    
     printf(" ip packet check sum is not correct\n");
     return;
   }
   else{
     printf("aqw\n");
-    packet_header->ip_sum = temp_ip_sum;
+    packet_header->ip_sum = temp_sum;
   }
     
   int k = 0;//if it is for this router
@@ -266,6 +266,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     }
     else{//otherwise, send ICMP packet back
     //ICMP PACKET Destination net unreachable (type 3, code 0):can not find it in the routing table
+    printf("WOWOWOWOWOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW");
       send_ICMP3_TYPE0(sr, packet,0, interface,3,0);
     }
 
@@ -278,18 +279,18 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) packet;
     sr_ip_hdr_t* ip_hdr = (sr_ip_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
     sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-    uint16_t temp_ip_sum = ip_hdr->ip_sum;
+    uint16_t temp_sum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0x0000;
-  printf("%hu\n", temp_ip_sum);
+  printf("%hu\n", temp_sum);
   printf("%hu\n", cksum(ip_hdr, sizeof(sr_ip_hdr_t)));
-  if(temp_ip_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t))){  
-    ip_hdr->ip_sum = temp_ip_sum;
+  if(temp_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t))){  
+  
     printf(" wrong\n");
     return;
   }
   else{
     printf("WWWW1111\n");
-    ip_hdr->ip_sum = temp_ip_sum;
+    ip_hdr->ip_sum = temp_sum;
   }
     sr_print_routing_table(sr);
     //in thr routing table, find the eth that I should send from
@@ -377,4 +378,3 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
                    + sizeof(sr_icmp_t11_hdr_t), new_interface->name);
 
 }
-
