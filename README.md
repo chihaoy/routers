@@ -2,11 +2,11 @@
 
 ## Info
 
-Name: John Doe
+Name: Chihao Yu
 
-PID: A00000000
+PID: A16248350
 
-Email: jdoe@ucsd.edu
+Email: chy007@ucsd.edu
 
 ## Description and Overview
 Describe in brief what files you changed and what they should do.
