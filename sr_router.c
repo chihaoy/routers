@@ -89,7 +89,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
     else{
      printf("arp_reply\n");
-      handle_arp_reply(sr, packet,len, interface);
+      //handle_arp_reply(sr, packet,len, interface);
     }
   }
   else if (type == ethertype_ip) {
@@ -362,7 +362,15 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   
   print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t));
-  sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+  if (code == 0){
+    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+                   + sizeof(sr_icmp_t11_hdr_t), interface);
+  }
+  else{
+    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), new_interface->name);
+
+  }
+  
 
 }
