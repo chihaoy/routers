@@ -73,7 +73,9 @@ void handle_arp_reply(struct sr_instance*, uint8_t*,unsigned int, char*);
 void handle_ip_packet(struct sr_instance*, uint8_t*,unsigned int , char*);
 void send_echo_reply(struct sr_instance* , uint8_t* ,unsigned int, char*);
 void handle_ip_packet(struct sr_instance* , uint8_t* ,unsigned int , char* );
-void send_ICMP3_TYPE0(struct sr_instance*, uint8_t*,unsigned int, char*,uint8_t,uint8_t);
+void send_ICMP3_TYPE0(struct sr_instance*, uint8_t*,unsigned int, char*);
+void send_ICMP3_TYPE1(struct sr_instance*, uint8_t*,unsigned int, char*);
+void send_ICMP11(struct sr_instance*, uint8_t*,unsigned int, char*);
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
