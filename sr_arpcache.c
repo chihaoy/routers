@@ -70,7 +70,12 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
             struct sr_if* interface = sr_get_interface(sr, req->packets->iface);
             eth_hdr->ether_type = htons(ethertype_arp);
-            memcpy(eth_hdr->ether_dhost, (uint8_t*)"\xff\xff\xff\xff\xff\xff", ETHER_ADDR_LEN);//set the destination to ffffff so it can broadcast
+            eth_hdr->ether_dhost[0] = 0xff;
+            eth_hdr->ether_dhost[1] = 0xff;
+            eth_hdr->ether_dhost[2] = 0xff;
+            eth_hdr->ether_dhost[3] = 0xff;
+            eth_hdr->ether_dhost[4] = 0xff;
+            eth_hdr->ether_dhost[5] = 0xff;
             memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
             arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
             arp_hdr->ar_pro = htons(ethertype_ip);
@@ -79,7 +84,12 @@ void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
             arp_hdr->ar_op = htons(arp_op_request);//since it is sending arp request, thus type is arp request
             memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
             arp_hdr->ar_sip = interface->ip;
-             memcpy(arp_hdr->ar_tha, (uint8_t*)"\x00\x00\x00\x00\x00\x00", ETHER_ADDR_LEN);
+            arp_hdr->ar_tha[0] = 0x00;
+            arp_hdr->ar_tha[1] = 0x00;
+            arp_hdr->ar_tha[2] = 0x00;
+            arp_hdr->ar_tha[3] = 0x00;
+            arp_hdr->ar_tha[4] = 0x00;
+            arp_hdr->ar_tha[5] = 0x00;
             arp_hdr->ar_tip = req->ip;
             
            
