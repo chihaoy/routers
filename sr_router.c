@@ -253,7 +253,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //and send the arp request to get the mac address
     if (is_in_rt_table == 1){
       //printf("it is for me ready to put it in the queue");
-      struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, packet_header->ip_dst, packet, len, curr_interface->name);
+      struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, match->gw.s_addr, packet, len, curr_interface->name);
       handle_arpreq(sr,arp_request);
     }
     else{//otherwise, send ICMP packet back
