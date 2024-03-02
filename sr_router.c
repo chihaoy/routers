@@ -84,11 +84,11 @@ void sr_handlepacket(struct sr_instance* sr,
   if (type == ethertype_arp) {
     sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     if (ntohs(arp_hdr->ar_op) == arp_op_request){
-      printf("arp_request\n");
+      //printf("arp_request\n");
       handle_arp_request(sr, packet,len, interface);
     }
     else{
-     printf("arp_reply\n");
+    // printf("arp_reply\n");
       handle_arp_reply(sr, packet,len, interface);
     }
   }
@@ -123,9 +123,9 @@ void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len
   b_arp_hdr->ar_tip = a_arp_hdr->ar_sip;//change to the IP address of the source 
   
   //send the packet back once it knows the mac address
-  printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
+  //printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
   sr_send_packet(sr, arp_request, len, curr_interface -> name);
-  printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
+  //printf("in arp!!!!!!!!!!!!!!!!!!!!\n");
 
 }
 /* the hint from sr_arpcache.c
@@ -144,10 +144,10 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   struct sr_arpreq* req = sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
                                             
   struct sr_packet* temp;
-  printf("hello\n");
+  //printf("hello\n");
   if (req != NULL) { // send reaming packet in the request queue corresponding to that(if it finds that)
       for (temp = req->packets; temp != NULL; temp = temp->next) {
-        printf("This is wrong");
+        //printf("This is wrong");
         sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)(temp -> buf);
         sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t*)(temp -> buf+sizeof(sr_ethernet_hdr_t));
         struct sr_if* curr_interface= sr_get_interface(sr, interface);
@@ -167,9 +167,9 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         new_ip_hdr->ip_sum = 0x0000;
         new_ip_hdr->ip_sum = cksum(new_ip_hdr, sizeof(sr_ip_hdr_t));
 
-        printf("what!!!!!!!!!!!!!!!!!!!!");
+        //printf("what!!!!!!!!!!!!!!!!!!!!");
         sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);
-        printf("what!!!!!!!!!!!!!!!!!!!!");
+        //printf("what!!!!!!!!!!!!!!!!!!!!");
         
             //print_hdrs(pkt->buf, pkt->len);
       }
@@ -186,16 +186,16 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   sr_ip_hdr_t* packet_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
   uint16_t temp_sum = packet_header->ip_sum;
   packet_header->ip_sum = 0x0000;
-  printf("wantfeqf  2ed 2dasda\n");
-  printf("%hu\n", temp_sum);
-  printf("%hu\n", cksum(packet_header, sizeof(sr_ip_hdr_t)));
+ // printf("wantfeqf  2ed 2dasda\n");
+ // printf("%hu\n", temp_sum);
+  //printf("%hu\n", cksum(packet_header, sizeof(sr_ip_hdr_t)));
   if(temp_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
   {  
-    printf(" ip packet check sum is not correct\n");
+    //printf(" ip packet check sum is not correct\n");
     return;
   }
   else{
-    printf("aqw\n");
+    //printf("aqw\n");
     packet_header->ip_sum = temp_sum;
   }
     
@@ -208,9 +208,9 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   //when it is destined for me//then send the echo reply
   if (k == 1){
     //if it is echo request, then send the echo reply
-    printf("This is for me!!\n");
+    //printf("This is for me!!\n");
     sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-    printf("icmp_hdr type: %u\n", icmp_hdr ->icmp_type);
+    //printf("icmp_hdr type: %u\n", icmp_hdr ->icmp_type);
     if (packet_header -> ip_p != ip_protocol_icmp){
       return;
     }
@@ -228,9 +228,9 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   else{//in this case we need to find the next hop and forward the packet
   //check the routing table to see if the dst_id is in there
     packet_header->ip_ttl = packet_header->ip_ttl - 1;
-    printf("ttl%u:\n",packet_header->ip_ttl);
+    //printf("ttl%u:\n",packet_header->ip_ttl);
     if (packet_header->ip_ttl == 0){
-      printf(" Time out!!\n");
+      //printf(" Time out!!\n");
       send_ICMP3_TYPE0(sr, packet, len,interface,11, 0);
       return;
     }
@@ -249,13 +249,13 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //if it is forward the packet//do not use cache at all, thus always store in the queue when the new packet come
     //and send the arp request to get the mac address
     if (is_in_rt_table == 1){
-      printf("it is for me ready to put it in the queue");
+      //printf("it is for me ready to put it in the queue");
       struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, packet_header->ip_dst, packet, len, curr_interface->name);
       handle_arpreq(sr,arp_request);
     }
     else{//otherwise, send ICMP packet back
     //ICMP PACKET Destination net unreachable (type 3, code 0):can not find it in the routing table
-    printf("WOWOWOWOWOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW");
+    //printf("WOWOWOWOWOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW");
       send_ICMP3_TYPE0(sr, packet,0, interface,3,0);
     }
 
@@ -263,21 +263,21 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
 }
 //still need revision
 void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
-    printf("echo reply1:\n");
+   // printf("echo reply1:\n");
     //print_hdrs(packet,len);
     sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) packet;
     sr_ip_hdr_t* ip_hdr = (sr_ip_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
     sr_icmp_t08_hdr_t* icmp_hdr = (sr_icmp_t08_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     uint16_t temp_sum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0x0000;
-  printf("%hu\n", temp_sum);
-  printf("%hu\n", cksum(ip_hdr, sizeof(sr_ip_hdr_t)));
+ // printf("%hu\n", temp_sum);
+  //printf("%hu\n", cksum(ip_hdr, sizeof(sr_ip_hdr_t)));
   if(temp_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t))){  
-    printf(" wrong\n");
+    //printf(" wrong\n");
     return;
   }
   else{
-    printf("WWWW1111\n");
+    //printf("WWWW1111\n");
     ip_hdr->ip_sum = temp_sum;
   }
     sr_print_routing_table(sr);
@@ -287,7 +287,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     while(match){
         uint32_t dist =  ip_hdr->ip_src;
         if(dist == match->dest.s_addr){
-          printf("AAAAA\n");
+         // printf("AAAAA\n");
           curr_interface = sr_get_interface(sr, match->interface);
           break;
         }
@@ -304,7 +304,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(ip_hdr ->ip_len) - sizeof(sr_ip_hdr_t));
     
     
-    printf("echo reply:\n");
+    //printf("echo reply:\n");
     //print_hdrs(packet,len);
     sr_send_packet(sr, packet, len, curr_interface->name);
 }
@@ -341,7 +341,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   b_ip_hdr->ip_v = a_ip_hdr->ip_v;
   b_ip_hdr->ip_tos = a_ip_hdr->ip_tos;
   b_ip_hdr->ip_len = htons(sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t11_hdr_t));
-  printf("fewd2%d\n",htons(sizeof(sr_ip_hdr_t)));
+  //printf("fewd2%d\n",htons(sizeof(sr_ip_hdr_t)));
   b_ip_hdr->ip_id = a_ip_hdr->ip_id;
   b_ip_hdr->ip_off = a_ip_hdr->ip_off;
   b_ip_hdr->ip_ttl = a_ip_hdr -> ip_ttl;
@@ -358,10 +358,9 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   icmp_hdr->icmp_sum = 0x0000;
   icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_t11_hdr_t));
   //icmp_hdr -> unused = 0;
-  printf("what I wanr\n");
+ // printf("what I wanr\n");
   
-  print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
-                   + sizeof(sr_icmp_t11_hdr_t));
+  //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
   if (code == 0){
     sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), interface);
