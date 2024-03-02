@@ -102,7 +102,7 @@ void sr_handlepacket(struct sr_instance* sr,
 }/* end sr_ForwardPacket */
 
 
-//basically for transmitting the packets between routers or when the hosts talk to the rou
+//basically for transmitting the packets between routers or when the hosts talk to the ro
 void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
   sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*) packet;
   sr_arp_hdr_t* a_arp_hdr = (sr_arp_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
