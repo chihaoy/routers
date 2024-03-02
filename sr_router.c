@@ -93,6 +93,9 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
   else if (type == ethertype_ip) {
+    if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)){
+      return;
+    }
     handle_ip_packet(sr, packet, len, interface);
   }
 
