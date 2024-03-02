@@ -89,7 +89,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
     else{
      printf("arp_reply\n");
-      //handle_arp_reply(sr, packet,len, interface);
+      handle_arp_reply(sr, packet,len, interface);
     }
   }
   else if (type == ethertype_ip) {
