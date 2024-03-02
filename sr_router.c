@@ -83,8 +83,6 @@ void sr_handlepacket(struct sr_instance* sr,
   uint16_t type = ethertype(packet);
   if (type == ethertype_arp) {
     sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-  
-  // sr_if* receive_interface= sr_get_interface(sr, interface);
     if (ntohs(arp_hdr->ar_op) == arp_op_request){
       printf("arp_request\n");
       handle_arp_request(sr, packet,len, interface);
@@ -275,7 +273,6 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
   printf("%hu\n", temp_sum);
   printf("%hu\n", cksum(ip_hdr, sizeof(sr_ip_hdr_t)));
   if(temp_sum != cksum(ip_hdr, sizeof(sr_ip_hdr_t))){  
-  
     printf(" wrong\n");
     return;
   }
