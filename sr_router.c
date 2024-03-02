@@ -326,19 +326,7 @@ void send_ICMP11(struct sr_instance* sr, uint8_t* packet,unsigned int len, char*
  
   b_e_hdr->ether_type = a_eth_hdr->ether_type;  
   memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
-   struct sr_if* new_interface;
-
-  struct sr_rt* match = sr->routing_table;
-  while(match)
-  {
-    uint32_t dist = a_ip_hdr->ip_src;
-    if(dist == match->dest.s_addr)
-    {
-      new_interface = sr_get_interface(sr, match->interface);
-    }
-    match = match->next;
-   }
-  memcpy(b_e_hdr->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
+  memcpy(b_e_hdr->ether_shost, a_eth_hdr ->ether_dhost, ETHER_ADDR_LEN);
   b_ip_hdr->ip_hl = a_ip_hdr->ip_hl;
   b_ip_hdr->ip_v = a_ip_hdr->ip_v;
   b_ip_hdr->ip_tos = a_ip_hdr->ip_tos;
@@ -365,7 +353,7 @@ void send_ICMP11(struct sr_instance* sr, uint8_t* packet,unsigned int len, char*
   //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
   
     sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
-                   + sizeof(sr_icmp_t11_hdr_t), new_interface->name);
+                   + sizeof(sr_icmp_t11_hdr_t), interface);
 
   
 
