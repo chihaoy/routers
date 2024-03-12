@@ -320,12 +320,15 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     //in thr routing table, find the eth that I should send from
     struct sr_if* curr_interface;
     struct sr_rt* match = sr->routing_table;
+    uint32_t temp1 = 0;
+    struct sr_rt* bestmatch;
     while(match){
         uint32_t dist =  ip_hdr->ip_src & match->mask.s_addr;
-        if(dist == match->dest.s_addr){
+        if(dist == match->dest.s_addr && match->mask.s_addr > temp1){
          // printf("AAAAA\n");
           curr_interface = sr_get_interface(sr, match->interface);
-          break;
+          temp1 = match->mask.s_addr;
+          bestmatch = match;
         }
       match = match->next;
     }
