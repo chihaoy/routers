@@ -37,7 +37,6 @@ void sr_init(struct sr_instance* sr)
 
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
-
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
     pthread_attr_setscope(&(sr->attr), PTHREAD_SCOPE_SYSTEM);
@@ -245,6 +244,8 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //printf("ttl%u:\n",packet_header->ip_ttl);
     if (packet_header->ip_ttl == 0){
       //printf(" Time out!!\n");
+      packet_header->ip_sum = 0x0000;
+      packet_header->ip_sum = cksum(packet_header, sizeof(sr_ip_hdr_t));
       send_ICMP11(sr, packet, len,interface);
       return;
     }
