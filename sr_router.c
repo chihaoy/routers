@@ -254,12 +254,15 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     struct sr_if* curr_interface;
     struct sr_rt* match = sr->routing_table;
     int is_in_rt_table = 0;
+    uint32_t temp = 0;
+    struct sr_rt* bestmatch;
     while(match){
         uint32_t dist =  packet_header->ip_dst & match->mask.s_addr;
-        if(dist == match->dest.s_addr){
+        if(dist == match->dest.s_addr && match->mask.s_addr > temp){
           curr_interface = sr_get_interface(sr, match->interface);
           is_in_rt_table = 1;
-          break;
+          temp = match->mask.s_addr;
+          bestmatch = match;
         }
       match = match->next;
     }
@@ -270,7 +273,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
       
 
       //check if it is in the arp entry
-      struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, match->gw.s_addr);
+      struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, bestmatch->gw.s_addr);
       ////////////////////////////////////////////////////////////////////////WHAT I ADD to Project 2b
       if (arp_entry){
         //printf("it is in the arp entry\n");
@@ -281,7 +284,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         sr_send_packet(sr, packet, len, curr_interface->name);
       }
       else{
-        struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, match->gw.s_addr, packet, len, curr_interface->name);
+        struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, bestmatch->gw.s_addr, packet, len, curr_interface->name);
       handle_arpreq(sr,arp_request);
       }
       
