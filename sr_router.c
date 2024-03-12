@@ -82,10 +82,6 @@ void sr_handlepacket(struct sr_instance* sr,
   uint16_t type = ethertype(packet);
   if (type == ethertype_arp) {
     sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    struct sr_if* curr_interface = sr_get_interface(sr, interface);
-    if (arp_hdr -> ar_tip != curr_interface -> ip){
-      return;
-    }
     if (ntohs(arp_hdr->ar_op) == arp_op_request){
       //printf("arp_request\n");
       handle_arp_request(sr, packet,len, interface);
@@ -204,8 +200,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //printf("aqw\n");
     packet_header->ip_sum = temp_sum;
   }
-  
-  
+    
   int k = 0;//if it is for this router
   for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
       if (interface ->ip == packet_header ->ip_dst){
@@ -259,26 +254,15 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     struct sr_if* curr_interface;
     struct sr_rt* match = sr->routing_table;
     int is_in_rt_table = 0;
-    uint32_t temp = 0;
-    struct sr_rt* bestmatch;
     while(match){
         uint32_t dist =  packet_header->ip_dst & match->mask.s_addr;
-        printf("dist: %u\n", dist);
-        printf("mask: %u\n", match->mask.s_addr);
-        printf("dest: %u\n", match->dest.s_addr);
-        if(dist == match->dest.s_addr && match->mask.s_addr > temp){
-          //printf("match the mask\n");
-          //printf("mask: %u\n", match->mask.s_addr);
+        if(dist == match->dest.s_addr){
           curr_interface = sr_get_interface(sr, match->interface);
           is_in_rt_table = 1;
-          temp = match->mask.s_addr;
-          bestmatch = match;
+          break;
         }
-        match = match->next;
-        
+      match = match->next;
     }
-    //print temp
-    printf("temp: %u\n", temp);
     //if it is forward the packet//do not use cache at all, thus always store in the queue when the new packet come
     //and send the arp request to get the mac address
     if (is_in_rt_table == 1){
@@ -286,7 +270,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
       
 
       //check if it is in the arp entry
-      struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, bestmatch->gw.s_addr);
+      struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, match->gw.s_addr);
       ////////////////////////////////////////////////////////////////////////WHAT I ADD to Project 2b
       if (arp_entry){
         //printf("it is in the arp entry\n");
@@ -297,7 +281,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         sr_send_packet(sr, packet, len, curr_interface->name);
       }
       else{
-        struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, bestmatch->gw.s_addr, packet, len, curr_interface->name);
+        struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, match->gw.s_addr, packet, len, curr_interface->name);
       handle_arpreq(sr,arp_request);
       }
       
@@ -333,12 +317,9 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     //in thr routing table, find the eth that I should send from
     struct sr_if* curr_interface;
     struct sr_rt* match = sr->routing_table;
-    struct sr_rt* bestmatch;
-    uint32_t temp1 = 0;
     while(match){
-        uint32_t dist =  ip_hdr->ip_src;
+        uint32_t dist =  ip_hdr->ip_src & match->mask.s_addr;
         if(dist == match->dest.s_addr){
-          // printf("AAAAA\n");
          // printf("AAAAA\n");
           curr_interface = sr_get_interface(sr, match->interface);
           break;
@@ -351,6 +332,8 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
     ip_hdr -> ip_ttl = INIT_TTL;
+    ip_hdr -> ip_sum = 0x0000;
+    ip_hdr -> ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
     icmp_hdr -> icmp_type = 0x00;
     icmp_hdr -> icmp_code = 0x00;
     icmp_hdr->icmp_sum = 0x0000;
@@ -423,17 +406,14 @@ void send_ICMP3_TYPE1(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   b_e_hdr->ether_type = a_eth_hdr->ether_type;  
   memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
    struct sr_if* new_interface;
-  struct sr_rt* bestmatch;
+
   struct sr_rt* match = sr->routing_table;
-  uint32_t temp = 0;
   while(match)
   {
     uint32_t dist = a_ip_hdr->ip_src & match->mask.s_addr;
-    if(dist == match->dest.s_addr && match->mask.s_addr > temp)
+    if(dist == match->dest.s_addr)
     {
       new_interface = sr_get_interface(sr, match->interface);
-      temp = match->mask.s_addr;
-      bestmatch = match;
     }
     match = match->next;
    }
@@ -532,16 +512,12 @@ void send_ICMP3_TYPE3(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
    struct sr_if* new_interface;
 
   struct sr_rt* match = sr->routing_table;
-  uint32_t temp = 0;
-  struct sr_rt* bestmatch;
   while(match)
   {
     uint32_t dist = a_ip_hdr->ip_src & match->mask.s_addr;
-    if(dist == match->dest.s_addr && match->mask.s_addr > temp)
+    if(dist == match->dest.s_addr)
     {
       new_interface = sr_get_interface(sr, match->interface);
-      temp = match->mask.s_addr;
-      bestmatch = match;
     }
     match = match->next;
    }
