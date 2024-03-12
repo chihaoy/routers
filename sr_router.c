@@ -411,15 +411,19 @@ void send_ICMP3_TYPE1(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
  
   b_e_hdr->ether_type = a_eth_hdr->ether_type;  
   memcpy(b_e_hdr->ether_dhost, a_eth_hdr->ether_shost, ETHER_ADDR_LEN);
-   struct sr_if* new_interface;
-
+  struct sr_if* new_interface;
+  uint32_t temp = 0;
+    struct sr_rt* bestmatch;
   struct sr_rt* match = sr->routing_table;
+  
   while(match)
   {
     uint32_t dist = a_ip_hdr->ip_src & match->mask.s_addr;
-    if(dist == match->dest.s_addr)
+    if(dist == match->dest.s_addr && match->mask.s_addr > temp)
     {
       new_interface = sr_get_interface(sr, match->interface);
+      temp = match->mask.s_addr;
+      bestmatch = match;
     }
     match = match->next;
    }
@@ -518,12 +522,16 @@ void send_ICMP3_TYPE3(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
    struct sr_if* new_interface;
 
   struct sr_rt* match = sr->routing_table;
+  uint32_t temp = 0;
+    struct sr_rt* bestmatch;
   while(match)
   {
     uint32_t dist = a_ip_hdr->ip_src & match->mask.s_addr;
-    if(dist == match->dest.s_addr)
+    if(dist == match->dest.s_addr && match->mask.s_addr > temp)
     {
       new_interface = sr_get_interface(sr, match->interface);
+      temp = match->mask.s_addr;
+      bestmatch = match;
     }
     match = match->next;
    }
