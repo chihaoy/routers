@@ -200,7 +200,8 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //printf("aqw\n");
     packet_header->ip_sum = temp_sum;
   }
-    
+  
+  
   int k = 0;//if it is for this router
   for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
       if (interface ->ip == packet_header ->ip_dst){
