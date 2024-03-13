@@ -216,7 +216,15 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
     //printf("icmp_hdr type: %u\n", icmp_hdr ->icmp_type);
     if (packet_header -> ip_p == ip_protocol_icmp){
       if (icmp_hdr ->icmp_type == 0x08){
-      
+        uint16_t temp_sum = icmp_hdr->icmp_sum;
+      icmp_hdr->icmp_sum = 0x0000;
+      if(temp_sum != cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t))){  
+      //printf(" icmp packet check sum is not correct\n");
+        return;
+      }
+      else{
+        icmp_hdr->icmp_sum = temp_sum;
+      }
         send_echo_reply(sr,packet,len,interface);
       }
     }
@@ -334,7 +342,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
       match = match->next;
     }
     memcpy(eth_hdr->ether_dhost, eth_hdr ->ether_shost, ETHER_ADDR_LEN);//destination host to be the mac address
-    memcpy(eth_hdr->ether_shost, sr_get_interface(sr, match->interface)->addr, ETHER_ADDR_LEN);//source host to be the interface address
+    memcpy(eth_hdr->ether_shost, sr_get_interface(sr, bestmatch->interface)->addr, ETHER_ADDR_LEN);//source host to be the interface address
     uint32_t temp = ip_hdr ->ip_dst;
     ip_hdr -> ip_dst = ip_hdr -> ip_src;
     ip_hdr -> ip_src = temp;
