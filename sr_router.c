@@ -93,6 +93,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
   else if (type == ethertype_ip) {
+    //sanity check
     if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)){
       return;
     }
@@ -159,7 +160,7 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         eth_hdr->ether_type = eth_hdr->ether_type;
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);//destination host to be the mac address
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
-        
+        //following lines are actually redudant, since we only need to change the mac address to send the packet, but just add to make sure to check every field
         new_ip_hdr->ip_tos = new_ip_hdr->ip_tos;
         new_ip_hdr->ip_len = new_ip_hdr->ip_len;
         new_ip_hdr->ip_id = new_ip_hdr->ip_id;
@@ -168,16 +169,18 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         new_ip_hdr->ip_p = new_ip_hdr->ip_p;
         new_ip_hdr -> ip_src = new_ip_hdr -> ip_src;
         new_ip_hdr -> ip_dst = new_ip_hdr -> ip_dst;
-       
+        //We actually do not need this since the ip header does not even change, but just to make sure that the checksum is correct
         new_ip_hdr->ip_sum = 0x0000;
         new_ip_hdr->ip_sum = cksum(new_ip_hdr, sizeof(sr_ip_hdr_t));
 
         //printf("what!!!!!!!!!!!!!!!!!!!!");
-        sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);
+        sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);//actually I can replace req->packets->iface with interface but 
+        //just to make sure that it is the correct interface
         //printf("what!!!!!!!!!!!!!!!!!!!!");
-        
+         
             //print_hdrs(pkt->buf, pkt->len);
       }
+      //destroy the packet since we are done sending the packet
       sr_arpreq_destroy(&sr->cache, req);//after it sends it, destroy it
     }
 }
@@ -205,10 +208,11 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   }
   
   
-  int k = 0;//if it is for this router
+  int k = 0;//if it is for this router(simply iterate through the interface list)
   for (struct sr_if* interface = sr->if_list; interface != NULL; interface = interface->next){
       if (interface ->ip == packet_header ->ip_dst){
           k = 1;
+          break;
       }
   }
   //when it is destined for me//then send the echo reply
@@ -231,7 +235,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         send_echo_reply(sr,packet,len,interface);
       }
     }
-    else if (packet_header -> ip_p == 0x06 || packet_header -> ip_p == 17){
+    else if (packet_header -> ip_p == 0x06 || packet_header -> ip_p == 17){//check for tcp/udp
       //printf("echo reply\n");
       //print_hdrs(packet,len);
       //send unreachable
