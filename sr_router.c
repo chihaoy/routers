@@ -80,6 +80,7 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
   //sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*)packet;
   uint16_t type = ethertype(packet);
+
   if (type == ethertype_arp) {
     sr_arp_hdr_t* arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     if (ntohs(arp_hdr->ar_op) == arp_op_request){
@@ -103,11 +104,13 @@ void sr_handlepacket(struct sr_instance* sr,
 
 //basically for transmitting the packets between routers or when the hosts talk to the ro
 void handle_arp_request(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+
   sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*) packet;
   sr_arp_hdr_t* a_arp_hdr = (sr_arp_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
   uint8_t* arp_request = (uint8_t*) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
   sr_ethernet_hdr_t* b_eth_hdr = (sr_ethernet_hdr_t*) arp_request;
   sr_arp_hdr_t* b_arp_hdr = (sr_arp_hdr_t*) (arp_request + sizeof(sr_ethernet_hdr_t));
+  /* Check if the request is for this interface */
   //assign the correct value for each field in the header
   struct sr_if* curr_interface= sr_get_interface(sr, interface);
   b_eth_hdr ->ether_type = a_eth_hdr ->ether_type;
