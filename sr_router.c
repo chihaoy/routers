@@ -161,18 +161,7 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
         memcpy(eth_hdr->ether_dhost, arp_hdr ->ar_sha, ETHER_ADDR_LEN);//destination host to be the mac address
         memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);//source host to be the interface address
         //following lines are actually redudant, since we only need to change the mac address to send the packet, but just add to make sure to check every field
-        new_ip_hdr->ip_tos = new_ip_hdr->ip_tos;
-        new_ip_hdr->ip_len = new_ip_hdr->ip_len;
-        new_ip_hdr->ip_id = new_ip_hdr->ip_id;
-        new_ip_hdr->ip_off = new_ip_hdr->ip_off;
-        new_ip_hdr->ip_ttl = new_ip_hdr->ip_ttl;
-        new_ip_hdr->ip_p = new_ip_hdr->ip_p;
-        new_ip_hdr -> ip_src = new_ip_hdr -> ip_src;
-        new_ip_hdr -> ip_dst = new_ip_hdr -> ip_dst;
-        //We actually do not need this since the ip header does not even change, but just to make sure that the checksum is correct
-        new_ip_hdr->ip_sum = 0x0000;
-        new_ip_hdr->ip_sum = cksum(new_ip_hdr, sizeof(sr_ip_hdr_t));
-
+        
         //printf("what!!!!!!!!!!!!!!!!!!!!");
         sr_send_packet(sr, temp->buf, temp->len, req->packets->iface);//actually I can replace req->packets->iface with interface but 
         //just to make sure that it is the correct interface
