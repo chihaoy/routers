@@ -48,7 +48,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 //under that it has several packets(linked list of packets) that has this IP destination address
 void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req){
     time_t now = time(NULL);
-    if (difftime(now,req ->sent) > 1){
+    if (difftime(now,req ->sent) >= 1){
         if (req ->times_sent >= 5){
             //send icmp host unreachable to source addr of all pkts waiting on this request
             struct sr_packet* packet1;
