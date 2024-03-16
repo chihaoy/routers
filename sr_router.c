@@ -353,7 +353,7 @@ void send_echo_reply(struct sr_instance* sr, uint8_t* packet,unsigned int len, c
     
     //printf("echo reply:\n");
     //print_hdrs(packet,len);
-    sr_send_packet(sr, packet, len, curr_interface->name);
+    sr_real_send(sr, packet, len, curr_interface->name);
 }
 
 void send_ICMP11(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
@@ -396,7 +396,7 @@ void send_ICMP11(struct sr_instance* sr, uint8_t* packet,unsigned int len, char*
   
   //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
   
-    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    sr_real_send(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), interface);
 
   
@@ -458,7 +458,7 @@ void send_ICMP3_TYPE1(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   
   //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
   
-    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    sr_real_send(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), new_interface->name);
 
   
@@ -504,7 +504,7 @@ void send_ICMP3_TYPE0(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
  // printf("what I wanr\n");
   
   //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
-    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    sr_real_send(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), interface);
   
 
@@ -566,9 +566,43 @@ void send_ICMP3_TYPE3(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
   
   //print_hdrs(new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)+ sizeof(sr_icmp_t11_hdr_t));
   
-    sr_send_packet(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    sr_real_send(sr, new_packet,sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
                    + sizeof(sr_icmp_t11_hdr_t), new_interface->name);
 
   
 
+}
+
+void sr_real_send(struct sr_instance* sr, uint8_t* packet,unsigned int len, char* interface){
+  struct sr_if* curr_interface;
+  struct sr_rt* match = sr->routing_table;
+  uint32_t temp1 = 0;
+  struct sr_rt* bestmatch;
+  sr_ethernet_hdr_t* a_eth_hdr = (sr_ethernet_hdr_t*)packet;
+   sr_ip_hdr_t* a_ip_hdr = (sr_ip_hdr_t*)(packet+ sizeof(sr_ethernet_hdr_t));
+  while(match){
+      uint32_t dist =  a_ip_hdr->ip_dst & match->mask.s_addr;
+      if(dist == match->dest.s_addr && match->mask.s_addr > temp1){
+       // printf("AAAAA\n");
+        curr_interface = sr_get_interface(sr, match->interface);
+        temp1 = match->mask.s_addr;
+        bestmatch = match;
+      }
+    match = match->next;
+  }
+  struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, bestmatch->gw.s_addr);
+    ////////////////////////////////////////////////////////////////////////WHAT I ADD to Project 2b
+    if (arp_entry){
+      //printf("it is in the arp entry\n");
+      sr_ethernet_hdr_t* eth_hdr = (sr_ethernet_hdr_t*) packet;
+      memcpy(eth_hdr->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
+      memcpy(eth_hdr->ether_shost, curr_interface->addr, ETHER_ADDR_LEN);
+      //printf("forward the packet\n");
+      sr_send_packet(sr, packet, len, curr_interface->name);
+    }
+    else{
+      struct sr_arpreq* arp_request = sr_arpcache_queuereq(&sr->cache, bestmatch->gw.s_addr, packet, len, curr_interface->name);
+      handle_arpreq(sr,arp_request);
+
+    }
 }
