@@ -186,7 +186,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,unsigned int len, 
  // printf("wantfeqf  2ed 2dasda\n");
  // printf("%hu\n", temp_sum);
   //printf("%hu\n", cksum(packet_header, sizeof(sr_ip_hdr_t)));
-  if(temp_sum != cksum(packet_header, sizeof(sr_ip_hdr_t)))
+  if(temp_sum != cksum(packet_header, packet_header ->ip_hl * 4))
   {  
     //printf(" ip packet check sum is not correct\n");
     return;
